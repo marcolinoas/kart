@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campeonato de Kart</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #f5f5f5;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h1, h2, h3 {
+      color: #ff3333;
+    }
+
+    .card {
+      background: #1c1c1c;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 0 18px rgba(0,0,0,0.4);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      text-align: left;
+    }
+
+    th {
+      background: #222;
+      color: #ffcc00;
+    }
+
+    tr:hover {
+      background: #2a2a2a;
+    }
+
+    .pos {
+      font-weight: bold;
+      color: #ffcc00;
+    }
+
+    .leader {
+      background: rgba(255, 204, 0, 0.12);
+    }
+
+    .tag {
+      display: inline-block;
+      background: #ff3333;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .footer {
+      color: #aaa;
+      font-size: 13px;
+      margin-top: 30px;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 12px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 7px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏁 Campeonato de Kart</h1>
+    <p>
+      Sistema de pontuação estilo Fórmula 1:
+      <strong>25, 18, 15, 12, 10, 8, 6, 4, 2, 1</strong>
+      + <strong>1 ponto por melhor volta</strong>.
+    </p>
+
+    <div class="card">
+      <h2>🏆 Classificação Geral</h2>
+      <table id="standings">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Piloto</th>
+            <th>Pontos</th>
+            <th>Vitórias</th>
+            <th>Pódios</th>
+            <th>Melhores Voltas</th>
+            <th>Etapas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>📅 Etapas</h2>
+      <div id="races"></div>
+    </div>
+
+    <p class="footer">
+      Atualizado manualmente com os resultados enviados pelo grupo.
+    </p>
+  </div>
+
+  <script>
+    const pointsByPosition = {
+      1: 25,
+      2: 18,
+      3: 15,
+      4: 12,
+      5: 10,
+      6: 8,
+      7: 6,
+      8: 4,
+      9: 2,
+      10: 1
+    };
+
+    const races = [
+      {
+        date: "05/11/2025",
+        fastestLap: "Willian Rabello Dos Santos",
+        results: [
+          "Alessandro Dos Santos",
+          "Diego Nogueira",
+          "Willian Rabello Dos Santos",
+          "Felipe Machado Von Hertwig",
+          "Marco Aurelio Silva",
+          "Rafael Menoya",
+          "Julio Aurelio Da Silva"
+        ]
+      },
+      {
+        date: "10/12/2025",
+        fastestLap: "Diego Nogueira",
+        results: [
+          "Diego Nogueira",
+          "Felipe Machado Von Hertwig",
+          "Julio Aurelio Da Silva",
+          "Alessandro Dos Santos",
+          "Philipe Neves Petropulos",
+          "Marco Aurelio Silva",
+          "Marcos Schneider Cercal",
+          "Henrique Cerutti Da Silva",
+          "Evandro Broering Nascimento",
+          "Renan Cerutti"
+        ]
+      },
+      {
+        date: "10/01/2026",
+        fastestLap: null,
+        fastestLapNote: "Aurélio fez a melhor volta, mas não faz parte do grupo",
+        results: [
+          "Marco Aurelio Silva",
+          "Alessandro Dos Santos",
+          "Felipe Machado Von Hertwig",
+          "Fernando",
+          "Julio Aurelio Da Silva",
+          "Philipe Neves Petropulos",
+          "Artur",
+          "Eduardo",
+          "Renan Cerutti"
+        ]
+      },
+      {
+        date: "14/02/2026",
+        fastestLap: "Willian Rabello Dos Santos",
+        results: [
+          "Willian Rabello Dos Santos",
+          "Marco Aurelio Silva",
+          "Felipe Machado Von Hertwig",
+          "Julio Aurelio Da Silva",
+          "Philipe Neves Petropulos",
+          "Guilherme",
+          "Luiz",
+          "Renan Cerutti",
+          "Evandro Broering Nascimento"
+        ]
+      },
+      {
+        date: "24/03/2026",
+        fastestLap: "Diego Nogueira",
+        results: [
+          "Jonas Aurelio Da Silva",
+          "Diego Nogueira",
+          "Marco Aurelio Silva",
+          "Philipe Neves Petropulos",
+          "Julio Aurelio Da Silva",
+          "Luiz Miguel De Souza",
+          "Evandro Broering Nascimento",
+          "Renan Cerutti",
+          "Ademar Izu Gomes",
+          "Henrique Cerutti Da Silva",
+          "Felipe Machado Von Hertwig"
+        ]
+      },
+      {
+        date: "25/04/2026",
+        fastestLap: "Felipe Machado Von Hertwig",
+        results: [
+          "Marco Aurelio Silva",
+          "Alessandro Dos Santos",
+          "Felipe Machado Von Hertwig",
+          "Diego Nogueira",
+          "Julio Aurelio Da Silva",
+          "Rodrigo Martins Machado",
+          "Thiago Livramento",
+          "Philipe Neves Petropulos",
+          "Eder De Oliveira Dos Santos",
+          "Igor Cerutti"
+        ]
+      }
+    ];
+
+    function calculateStandings() {
+      const drivers = {};
+
+      races.forEach(race => {
+        race.results.forEach((driver, index) => {
+          const position = index + 1;
+          const basePoints = pointsByPosition[position] || 0;
+          const fastestLapPoint = driver === race.fastestLap ? 1 : 0;
+          const total = basePoints + fastestLapPoint;
+
+          if (!drivers[driver]) {
+            drivers[driver] = {
+              name: driver,
+              points: 0,
+              wins: 0,
+              podiums: 0,
+              fastestLaps: 0,
+              races: 0,
+              bestPosition: 99
+            };
+          }
+
+          drivers[driver].points += total;
+          drivers[driver].races += 1;
+          drivers[driver].bestPosition = Math.min(drivers[driver].bestPosition, position);
+
+          if (position === 1) drivers[driver].wins += 1;
+          if (position <= 3) drivers[driver].podiums += 1;
+          if (driver === race.fastestLap) drivers[driver].fastestLaps += 1;
+        });
+      });
+
+      return Object.values(drivers).sort((a, b) => {
+        return b.points - a.points ||
+               b.wins - a.wins ||
+               b.podiums - a.podiums ||
+               a.bestPosition - b.bestPosition ||
+               a.name.localeCompare(b.name);
+      });
+    }
+
+    function renderStandings() {
+      const standings = calculateStandings();
+      const tbody = document.querySelector("#standings tbody");
+      tbody.innerHTML = "";
+
+      standings.forEach((driver, index) => {
+        const tr = document.createElement("tr");
+        if (index === 0) tr.classList.add("leader");
+
+        tr.innerHTML = `
+          <td class="pos">${index + 1}</td>
+          <td>${driver.name}</td>
+          <td><strong>${driver.points}</strong></td>
+          <td>${driver.wins}</td>
+          <td>${driver.podiums}</td>
+          <td>${driver.fastestLaps}</td>
+          <td>${driver.races}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderRaces() {
+      const racesDiv = document.getElementById("races");
+      racesDiv.innerHTML = "";
+
+      races.forEach(race => {
+        const card = document.createElement("div");
+        card.style.marginBottom = "28px";
+
+        const fastestLapText = race.fastestLap
+          ? `<strong>${race.fastestLap}</strong>`
+          : `<strong>Sem bônus</strong> — ${race.fastestLapNote || "melhor volta fora do grupo"}`;
+
+        let rows = race.results.map((driver, index) => {
+          const position = index + 1;
+          const basePoints = pointsByPosition[position] || 0;
+          const bonus = driver === race.fastestLap ? 1 : 0;
+          const total = basePoints + bonus;
+
+          return `
+            <tr>
+              <td class="pos">${position}</td>
+              <td>
+                ${driver}
+                ${bonus ? '<span class="tag">Melhor volta</span>' : ''}
+              </td>
+              <td>${total}</td>
+            </tr>
+          `;
+        }).join("");
+
+        card.innerHTML = `
+          <h3>${race.date}</h3>
+          <p>Melhor volta: ${fastestLapText}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Pos</th>
+                <th>Piloto</th>
+                <th>Pontos</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+
+        racesDiv.appendChild(card);
+      });
+    }
+
+    renderStandings();
+    renderRaces();
+  </script>
+</body>
+</html>
