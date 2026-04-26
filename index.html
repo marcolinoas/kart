@@ -70,6 +70,44 @@
       font-size: 12px;
     }
 
+    .note {
+      color: #ccc;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .tab-button {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 999px;
+      color: #f5f5f5;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 10px 18px;
+    }
+
+    .tab-button.active {
+      background: #ffcc00;
+      border-color: #ffcc00;
+      color: #111;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
     .footer {
       color: #aaa;
       font-size: 13px;
@@ -100,7 +138,16 @@
       + <strong>1 ponto por melhor volta</strong>.
     </p>
 
-    <div class="card">
+    <div class="tabs" role="tablist" aria-label="Classificações">
+      <button class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="general-panel" data-tab="general-panel">
+        Geral
+      </button>
+      <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="drops-panel" data-tab="drops-panel">
+        Descartes
+      </button>
+    </div>
+
+    <div class="card tab-panel active" id="general-panel" role="tabpanel">
       <h2>🏆 Classificação Geral</h2>
       <table id="standings">
         <thead>
@@ -111,6 +158,25 @@
             <th>Vitórias</th>
             <th>Pódios</th>
             <th>Melhores Voltas</th>
+            <th>Etapas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card tab-panel" id="drops-panel" role="tabpanel">
+      <h2>🏆 Classificação com Descartes</h2>
+      <p class="note">
+        Pilotos com mais de 4 etapas descartam os 2 piores resultados. Pilotos com 4 etapas ou menos mantêm a pontuação normal.
+      </p>
+      <table id="weighted-standings">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Piloto</th>
+            <th>Pontos</th>
+            <th>Pontos Descartados</th>
             <th>Etapas</th>
           </tr>
         </thead>
@@ -279,6 +345,76 @@
       });
     }
 
+    function calculateWeightedStandings() {
+      const drivers = {};
+
+      races.forEach(race => {
+        race.results.forEach((driver, index) => {
+          const position = index + 1;
+          const basePoints = pointsByPosition[position] || 0;
+          const fastestLapPoint = driver === race.fastestLap ? 1 : 0;
+          const total = basePoints + fastestLapPoint;
+
+          if (!drivers[driver]) {
+            drivers[driver] = {
+              name: driver,
+              results: [],
+              bestPosition: 99
+            };
+          }
+
+          drivers[driver].results.push({
+            points: total,
+            position: position
+          });
+          drivers[driver].bestPosition = Math.min(drivers[driver].bestPosition, position);
+        });
+      });
+
+      return Object.values(drivers).map(driver => {
+        const sortedResults = driver.results.slice().sort((a, b) => {
+          return a.points - b.points || b.position - a.position;
+        });
+        const droppedResults = driver.results.length > 4 ? sortedResults.slice(0, 2) : [];
+        const totalPoints = driver.results.reduce((sum, result) => sum + result.points, 0);
+        const droppedPoints = droppedResults.reduce((sum, result) => sum + result.points, 0);
+
+        return {
+          name: driver.name,
+          points: totalPoints - droppedPoints,
+          droppedPoints: droppedPoints,
+          races: driver.results.length,
+          bestPosition: driver.bestPosition
+        };
+      }).sort((a, b) => {
+        return b.points - a.points ||
+               a.droppedPoints - b.droppedPoints ||
+               a.bestPosition - b.bestPosition ||
+               a.name.localeCompare(b.name);
+      });
+    }
+
+    function renderWeightedStandings() {
+      const standings = calculateWeightedStandings();
+      const tbody = document.querySelector("#weighted-standings tbody");
+      tbody.innerHTML = "";
+
+      standings.forEach((driver, index) => {
+        const tr = document.createElement("tr");
+        if (index === 0) tr.classList.add("leader");
+
+        tr.innerHTML = `
+          <td class="pos">${index + 1}</td>
+          <td>${driver.name}</td>
+          <td><strong>${driver.points}</strong></td>
+          <td>${driver.droppedPoints}</td>
+          <td>${driver.races}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderStandings() {
       const standings = calculateStandings();
       const tbody = document.querySelector("#standings tbody");
@@ -351,8 +487,29 @@
       });
     }
 
+    function setupTabs() {
+      const buttons = document.querySelectorAll(".tab-button");
+      const panels = document.querySelectorAll(".tab-panel");
+
+      buttons.forEach(button => {
+        button.addEventListener("click", () => {
+          buttons.forEach(currentButton => {
+            currentButton.classList.remove("active");
+            currentButton.setAttribute("aria-selected", "false");
+          });
+          panels.forEach(panel => panel.classList.remove("active"));
+
+          button.classList.add("active");
+          button.setAttribute("aria-selected", "true");
+          document.getElementById(button.dataset.tab).classList.add("active");
+        });
+      });
+    }
+
     renderStandings();
+    renderWeightedStandings();
     renderRaces();
+    setupTabs();
   </script>
 </body>
 </html>
