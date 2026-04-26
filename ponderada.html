@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campeonato de Kart</title>
+  <title>Classificação Ponderada - Campeonato de Kart</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -18,7 +18,7 @@
       margin: auto;
     }
 
-    h1, h2, h3 {
+    h1, h2 {
       color: #ff3333;
     }
 
@@ -61,15 +61,6 @@
       background: rgba(255, 204, 0, 0.12);
     }
 
-    .tag {
-      display: inline-block;
-      background: #ff3333;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-    }
-
     .nav {
       display: flex;
       gap: 12px;
@@ -84,6 +75,11 @@
       font-weight: bold;
       padding: 10px 14px;
       border-radius: 999px;
+    }
+
+    .note {
+      color: #ccc;
+      line-height: 1.5;
     }
 
     .footer {
@@ -109,11 +105,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>🏁 Campeonato de Kart</h1>
-    <p>
-      Sistema de pontuação estilo Fórmula 1:
-      <strong>25, 18, 15, 12, 10, 8, 6, 4, 2, 1</strong>
-      + <strong>1 ponto por melhor volta</strong>.
+    <h1>🏁 Classificação Ponderada</h1>
+    <p class="note">
+      Ranking equilibrado para comparar os pilotos como se todos tivessem 4 corridas.
+      Quem tem mais de 4 corridas tem os piores resultados descartados. Quem tem menos de 4 corridas tem a média projetada para 4 etapas.
     </p>
 
     <nav class="nav" aria-label="Páginas do campeonato">
@@ -122,26 +117,20 @@
     </nav>
 
     <div class="card">
-      <h2>🏆 Classificação Geral</h2>
-      <table id="standings">
+      <h2>🏆 Classificação Ponderada</h2>
+      <table id="weighted-standings">
         <thead>
           <tr>
             <th>Pos</th>
             <th>Piloto</th>
-            <th>Pontos</th>
-            <th>Vitórias</th>
-            <th>Pódios</th>
-            <th>Melhores Voltas</th>
+            <th>Pontos Ponderados</th>
+            <th>Pontos Contados</th>
             <th>Etapas</th>
+            <th>Descartes</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
-    </div>
-
-    <div class="card">
-      <h2>📅 Etapas</h2>
-      <div id="races"></div>
     </div>
 
     <p class="footer">
@@ -151,7 +140,9 @@
 
   <script src="dados.js"></script>
   <script>
-    function calculateStandings() {
+    const TARGET_RACES = 4;
+
+    function calculateWeightedStandings() {
       const drivers = {};
 
       races.forEach(race => {
@@ -164,37 +155,54 @@
           if (!drivers[driver]) {
             drivers[driver] = {
               name: driver,
-              points: 0,
-              wins: 0,
-              podiums: 0,
-              fastestLaps: 0,
-              races: 0,
+              results: [],
               bestPosition: 99
             };
           }
 
-          drivers[driver].points += total;
-          drivers[driver].races += 1;
+          drivers[driver].results.push({
+            date: race.date,
+            points: total,
+            position: position
+          });
           drivers[driver].bestPosition = Math.min(drivers[driver].bestPosition, position);
-
-          if (position === 1) drivers[driver].wins += 1;
-          if (position <= 3) drivers[driver].podiums += 1;
-          if (driver === race.fastestLap) drivers[driver].fastestLaps += 1;
         });
       });
 
-      return Object.values(drivers).sort((a, b) => {
-        return b.points - a.points ||
-               b.wins - a.wins ||
-               b.podiums - a.podiums ||
+      return Object.values(drivers).map(driver => {
+        const sortedResults = driver.results.slice().sort((a, b) => {
+          return b.points - a.points || a.position - b.position || a.date.localeCompare(b.date);
+        });
+        const countedResults = sortedResults.slice(0, TARGET_RACES);
+        const countedPoints = countedResults.reduce((sum, result) => sum + result.points, 0);
+        const weightedPoints = driver.results.length < TARGET_RACES
+          ? countedPoints / driver.results.length * TARGET_RACES
+          : countedPoints;
+
+        return {
+          name: driver.name,
+          weightedPoints: weightedPoints,
+          countedPoints: countedPoints,
+          races: driver.results.length,
+          drops: Math.max(driver.results.length - TARGET_RACES, 0),
+          bestPosition: driver.bestPosition
+        };
+      }).sort((a, b) => {
+        return b.weightedPoints - a.weightedPoints ||
+               b.countedPoints - a.countedPoints ||
+               b.races - a.races ||
                a.bestPosition - b.bestPosition ||
                a.name.localeCompare(b.name);
       });
     }
 
-    function renderStandings() {
-      const standings = calculateStandings();
-      const tbody = document.querySelector("#standings tbody");
+    function formatPoints(points) {
+      return Number.isInteger(points) ? String(points) : points.toFixed(1);
+    }
+
+    function renderWeightedStandings() {
+      const standings = calculateWeightedStandings();
+      const tbody = document.querySelector("#weighted-standings tbody");
       tbody.innerHTML = "";
 
       standings.forEach((driver, index) => {
@@ -204,68 +212,17 @@
         tr.innerHTML = `
           <td class="pos">${index + 1}</td>
           <td>${driver.name}</td>
-          <td><strong>${driver.points}</strong></td>
-          <td>${driver.wins}</td>
-          <td>${driver.podiums}</td>
-          <td>${driver.fastestLaps}</td>
+          <td><strong>${formatPoints(driver.weightedPoints)}</strong></td>
+          <td>${driver.countedPoints}</td>
           <td>${driver.races}</td>
+          <td>${driver.drops}</td>
         `;
 
         tbody.appendChild(tr);
       });
     }
 
-    function renderRaces() {
-      const racesDiv = document.getElementById("races");
-      racesDiv.innerHTML = "";
-
-      races.forEach(race => {
-        const card = document.createElement("div");
-        card.style.marginBottom = "28px";
-
-        const fastestLapText = race.fastestLap
-          ? `<strong>${race.fastestLap}</strong>`
-          : `<strong>Sem bônus</strong> — ${race.fastestLapNote || "melhor volta fora do grupo"}`;
-
-        let rows = race.results.map((driver, index) => {
-          const position = index + 1;
-          const basePoints = pointsByPosition[position] || 0;
-          const bonus = driver === race.fastestLap ? 1 : 0;
-          const total = basePoints + bonus;
-
-          return `
-            <tr>
-              <td class="pos">${position}</td>
-              <td>
-                ${driver}
-                ${bonus ? '<span class="tag">Melhor volta</span>' : ''}
-              </td>
-              <td>${total}</td>
-            </tr>
-          `;
-        }).join("");
-
-        card.innerHTML = `
-          <h3>${race.date}</h3>
-          <p>Melhor volta: ${fastestLapText}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Pos</th>
-                <th>Piloto</th>
-                <th>Pontos</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-
-        racesDiv.appendChild(card);
-      });
-    }
-
-    renderStandings();
-    renderRaces();
+    renderWeightedStandings();
   </script>
 </body>
 </html>
